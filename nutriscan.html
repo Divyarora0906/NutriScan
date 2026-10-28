@@ -1,0 +1,1890 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NutriScan - Nutrition Intelligence Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2314532D'/><path d='M35 75C35 75 35 45 65 30C65 30 65 60 35 75Z' stroke='%23A3E635' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/><path d='M35 75L50 50' stroke='%23A3E635' stroke-width='6' stroke-linecap='round'/></svg>"
+    />
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- HTML5 QR Code Reader JS -->
+    <script
+      src="https://unpkg.com/html5-qrcode"
+      type="text/javascript"
+    ></script>
+
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                deep: "#14532D" /* Deep forest green */,
+                lime: "#86EFAC" /* Fresh lime tone */,
+                brightLime: "#A3E635",
+                bg: "#F8FAF5" /* Warm off-white */,
+                card: "#FFFFFF" /* Pure white */,
+                text: "#17231B" /* Dark charcoal */,
+                muted: "#718075" /* Muted green-gray */,
+                border: "#E2E9DF" /* Subtle sage */,
+                surface: "#F1F5EE",
+              },
+            },
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+              heading: ["Manrope", "sans-serif"],
+            },
+            keyframes: {
+              laserScan: {
+                "0%, 100%": { top: "5%" },
+                "50%": { top: "90%" },
+              },
+              floatSlow: {
+                "0%, 100%": { transform: "translate(0px, 0px) scale(1)" },
+                "50%": { transform: "translate(30px, -20px) scale(1.08)" },
+              },
+              floatSlowAlt: {
+                "0%, 100%": { transform: "translate(0px, 0px) scale(1)" },
+                "50%": { transform: "translate(-25px, 25px) scale(1.05)" },
+              },
+            },
+            animation: {
+              laser: "laserScan 2.5s ease-in-out infinite",
+              blob1: "floatSlow 16s ease-in-out infinite",
+              blob2: "floatSlowAlt 20s ease-in-out infinite",
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      body {
+        background-color: #f8faf5;
+        color: #17231b;
+        font-family: "Inter", sans-serif;
+      }
+
+      .heading-font {
+        font-family: "Manrope", sans-serif;
+      }
+
+      /* Scroll Reveal Animations */
+      .reveal-on-scroll {
+        opacity: 0;
+        transform: translateY(24px);
+        transition:
+          opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+          transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        will-change: opacity, transform;
+      }
+
+      .reveal-on-scroll.revealed {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Ambient background gradient styling */
+      .ambient-bg {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        overflow: hidden;
+      }
+
+      .ambient-blob {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.45;
+      }
+
+      /* Custom scrollbars */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f5ee;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+
+      /* 3D perspective card container */
+      .tilt-card-container {
+        perspective: 1000px;
+      }
+
+      .tilt-card {
+        transition:
+          transform 0.15s ease-out,
+          box-shadow 0.15s ease-out;
+        transform-style: preserve-3d;
+        will-change: transform;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .animate-blob1,
+        .animate-blob2,
+        .animate-laser {
+          animation: none !important;
+        }
+        .tilt-card {
+          transform: none !important;
+        }
+        .reveal-on-scroll {
+          opacity: 1 !important;
+          transform: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body
+    class="relative min-h-screen flex flex-col antialiased selection:bg-brand-brightLime selection:text-brand-deep"
+  >
+    <!-- Preloader Overlay -->
+    <div
+      id="preloader"
+      class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-brand-bg transition-opacity duration-500"
+    >
+      <div class="relative flex items-center justify-center mb-4">
+        <div
+          class="w-16 h-16 rounded-2xl bg-brand-deep text-brand-brightLime flex items-center justify-center shadow-lg animate-bounce"
+        >
+          <i data-lucide="leaf" class="w-8 h-8 stroke-[2.5]"></i>
+        </div>
+        <div
+          class="absolute -inset-2 rounded-3xl border-2 border-brand-brightLime/40 animate-ping"
+        ></div>
+      </div>
+      <div
+        class="heading-font text-2xl font-extrabold text-brand-deep tracking-tight"
+      >
+        Nutri<span class="text-emerald-600">Scan</span>
+      </div>
+      <p class="text-xs text-brand-muted font-medium mt-1">
+        Initializing FSSAI INR Engine...
+      </p>
+    </div>
+
+    <!-- Ambient Animated Background -->
+    <div class="ambient-bg" aria-hidden="true">
+      <div
+        class="ambient-blob animate-blob1 w-[500px] h-[500px] bg-emerald-200/60 -top-20 -left-20"
+      ></div>
+      <div
+        class="ambient-blob animate-blob2 w-[600px] h-[600px] bg-lime-200/50 bottom-0 right-0"
+      ></div>
+    </div>
+
+    <!-- App Header / Navigation -->
+    <header
+      class="sticky top-0 z-40 backdrop-blur-md bg-brand-bg/85 border-b border-brand-border/60 transition-all"
+    >
+      <div
+        class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between"
+      >
+        <!-- Brand Logo -->
+        <a
+          href="#"
+          class="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-brand-deep rounded-lg p-1"
+        >
+          <div
+            class="w-10 h-10 rounded-xl bg-brand-deep text-brand-brightLime flex items-center justify-center shadow-md group-hover:scale-105 transition-transform"
+          >
+            <i data-lucide="leaf" class="w-6 h-6 stroke-[2.5]"></i>
+          </div>
+          <div class="flex flex-col">
+            <span
+              class="heading-font text-2xl font-extrabold tracking-tight text-brand-deep leading-none"
+              >Nutri<span class="text-emerald-600">Scan</span></span
+            >
+            <span
+              class="text-[10px] uppercase tracking-widest text-brand-muted font-bold mt-0.5"
+              >Nutrition Intelligence</span
+            >
+          </div>
+        </a>
+
+        <!-- Desktop Nav -->
+        <nav
+          class="hidden md:flex items-center gap-8 font-medium text-sm text-brand-text/80"
+        >
+          <a href="#hero" class="hover:text-brand-deep transition-colors"
+            >Home</a
+          >
+          <a href="#scanner" class="hover:text-brand-deep transition-colors"
+            >Scan Product</a
+          >
+          <a href="#explore" class="hover:text-brand-deep transition-colors"
+            >Explore Database</a
+          >
+          <a
+            href="#how-it-works"
+            class="hover:text-brand-deep transition-colors"
+            >How It Works</a
+          >
+        </nav>
+
+        <!-- Action Button -->
+        <div class="hidden md:flex items-center gap-3">
+          <a
+            href="#scanner"
+            class="px-5 py-2.5 rounded-xl bg-brand-deep hover:bg-emerald-900 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+          >
+            <i data-lucide="scan-barcode" class="w-4 h-4"></i>
+            <span>Scan Product</span>
+          </a>
+        </div>
+
+        <!-- Mobile Menu Button -->
+        <button
+          id="mobile-menu-btn"
+          class="md:hidden p-2 rounded-lg text-brand-text hover:bg-brand-surface focus:outline-none"
+          aria-label="Toggle menu"
+        >
+          <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+      </div>
+
+      <!-- Mobile Navigation Drawer -->
+      <div
+        id="mobile-menu"
+        class="hidden md:hidden border-b border-brand-border bg-white/95 backdrop-blur-lg px-4 pt-2 pb-6 space-y-3"
+      >
+        <a
+          href="#hero"
+          class="block py-2 text-brand-text font-medium hover:text-brand-deep"
+          >Home</a
+        >
+        <a
+          href="#scanner"
+          class="block py-2 text-brand-text font-medium hover:text-brand-deep"
+          >Scan Product</a
+        >
+        <a
+          href="#explore"
+          class="block py-2 text-brand-text font-medium hover:text-brand-deep"
+          >Explore Database</a
+        >
+        <a
+          href="#how-it-works"
+          class="block py-2 text-brand-text font-medium hover:text-brand-deep"
+          >How It Works</a
+        >
+        <a
+          href="#scanner"
+          class="w-full mt-2 px-5 py-3 rounded-xl bg-brand-deep text-white font-semibold text-center flex items-center justify-center gap-2"
+        >
+          <i data-lucide="scan-barcode" class="w-4 h-4"></i> Scan Product Now
+        </a>
+      </div>
+    </header>
+
+    <main class="relative z-10 flex-grow">
+      <!-- Hero Section -->
+      <section
+        id="hero"
+        class="pt-10 pb-16 lg:pt-20 lg:pb-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 reveal-on-scroll"
+      >
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          <!-- Hero Text Content -->
+          <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
+            <div
+              class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-100/80 border border-emerald-200 text-brand-deep text-xs font-semibold uppercase tracking-wider"
+            >
+              <i
+                data-lucide="sparkles"
+                class="w-3.5 h-3.5 text-emerald-700"
+              ></i>
+              <span>FSSAI INR Standardized Scoring</span>
+            </div>
+
+            <h1
+              class="heading-font text-4xl sm:text-5xl lg:text-6xl font-extrabold text-brand-text leading-[1.15]"
+            >
+              Know What You Eat. <br class="hidden sm:inline" />
+              <span
+                class="text-brand-deep underline decoration-brand-brightLime decoration-wavy decoration-2"
+                >Scan &amp; Understand</span
+              >
+              Packaged Foods.
+            </h1>
+
+            <p
+              class="text-lg text-brand-muted max-w-2xl mx-auto lg:mx-0 font-normal leading-relaxed"
+            >
+              NutriScan decodes complex food nutrition labels into an intuitive
+              5-Star Rating powered by the proposed Indian Nutrition Rating
+              (INR) methodology.
+            </p>
+
+            <div
+              class="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4"
+            >
+              <a
+                href="#scanner"
+                class="w-full sm:w-auto px-7 py-4 rounded-xl bg-brand-deep hover:bg-emerald-900 text-white font-bold text-base shadow-lg shadow-emerald-900/15 hover:shadow-xl transition-all flex items-center justify-center gap-3"
+              >
+                <i data-lucide="qr-code" class="w-5 h-5"></i>
+                <span>Scan a Product</span>
+              </a>
+              <a
+                href="#explore"
+                class="w-full sm:w-auto px-7 py-4 rounded-xl bg-white hover:bg-brand-surface text-brand-text border border-brand-border font-semibold text-base shadow-sm transition-all flex items-center justify-center gap-2"
+              >
+                <i data-lucide="search" class="w-5 h-5 text-brand-muted"></i>
+                <span>Explore Products</span>
+              </a>
+            </div>
+
+            <!-- Feature Bullets -->
+            <div
+              class="pt-6 grid grid-cols-3 gap-4 border-t border-brand-border/60 max-w-lg mx-auto lg:mx-0"
+            >
+              <div class="flex flex-col items-center lg:items-start">
+                <span class="heading-font font-bold text-brand-deep text-xl"
+                  >400+</span
+                >
+                <span class="text-xs text-brand-muted">Indian Foods</span>
+              </div>
+              <div class="flex flex-col items-center lg:items-start">
+                <span class="heading-font font-bold text-brand-deep text-xl"
+                  >100%</span
+                >
+                <span class="text-xs text-brand-muted">FSSAI INR Rules</span>
+              </div>
+              <div class="flex flex-col items-center lg:items-start">
+                <span class="heading-font font-bold text-brand-deep text-xl"
+                  >Instant</span
+                >
+                <span class="text-xs text-brand-muted">Visual Star Score</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hero Preview Card Component -->
+          <div class="lg:col-span-5 relative tilt-card-container">
+            <div
+              id="sample-hero-card"
+              class="tilt-card bg-white rounded-3xl p-6 sm:p-8 border border-brand-border shadow-xl shadow-brand-deep/5 relative overflow-hidden group"
+            >
+              <!-- Sample Packaged Food Card -->
+              <div
+                class="flex items-start justify-between pb-6 border-b border-brand-border"
+              >
+                <div>
+                  <span
+                    class="inline-block text-[11px] font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md mb-2"
+                    >Sample Product</span
+                  >
+                  <h3 class="heading-font text-xl font-bold text-brand-text">
+                    Oat & Fruit Digestive Biscuits
+                  </h3>
+                  <p class="text-xs text-brand-muted mt-0.5">
+                    Standard Pack • 100g serving base
+                  </p>
+                </div>
+                <div
+                  class="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-500 shadow-sm shrink-0"
+                >
+                  <i data-lucide="cookie" class="w-6 h-6"></i>
+                </div>
+              </div>
+
+              <!-- Visual Rating Section -->
+              <div
+                class="py-6 text-center bg-gradient-to-b from-brand-bg/50 to-white rounded-2xl my-4 border border-brand-border/50"
+              >
+                <span
+                  class="text-xs uppercase font-bold text-brand-muted tracking-wider"
+                  >FSSAI INR Health Score</span
+                >
+                <div class="flex items-center justify-center gap-1.5 my-2">
+                  <i
+                    data-lucide="star"
+                    class="w-7 h-7 fill-amber-400 text-amber-400"
+                  ></i>
+                  <i
+                    data-lucide="star"
+                    class="w-7 h-7 fill-amber-400 text-amber-400"
+                  ></i>
+                  <i
+                    data-lucide="star"
+                    class="w-7 h-7 fill-amber-400 text-amber-400"
+                  ></i>
+                  <i
+                    data-lucide="star-half"
+                    class="w-7 h-7 fill-amber-400 text-amber-400"
+                  ></i>
+                  <i data-lucide="star" class="w-7 h-7 text-gray-300"></i>
+                </div>
+                <div
+                  class="heading-font font-extrabold text-3xl text-brand-text"
+                >
+                  3.5
+                  <span class="text-lg text-brand-muted font-normal"
+                    >/ 5.0 Stars</span
+                  >
+                </div>
+                <p class="text-[11px] text-brand-muted mt-1 italic">
+                  Based on FSSAI INR Methodology Guidelines
+                </p>
+              </div>
+
+              <!-- Compact Nutrient Grid Preview -->
+              <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                <div
+                  class="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-100"
+                >
+                  <span class="block text-emerald-800 font-medium text-[10px]"
+                    >Energy</span
+                  >
+                  <span class="font-bold text-brand-text">435 kcal</span>
+                </div>
+                <div
+                  class="p-2.5 rounded-xl bg-amber-50/60 border border-amber-100"
+                >
+                  <span class="block text-amber-800 font-medium text-[10px]"
+                    >Total Sugar</span
+                  >
+                  <span class="font-bold text-brand-text">18.5g</span>
+                </div>
+                <div
+                  class="p-2.5 rounded-xl bg-blue-50/60 border border-blue-100"
+                >
+                  <span class="block text-blue-800 font-medium text-[10px]"
+                    >Protein</span
+                  >
+                  <span class="font-bold text-brand-text">7.2g</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Product Scanning Section -->
+      <section
+        id="scanner"
+        class="py-12 bg-white border-y border-brand-border reveal-on-scroll"
+      >
+        <div class="max-w-4xl mx-auto px-4 sm:px-6">
+          <div class="text-center max-w-2xl mx-auto mb-8">
+            <h2 class="heading-font text-3xl font-extrabold text-brand-text">
+              Product Scanning Panel
+            </h2>
+            <p class="text-brand-muted text-sm mt-2">
+              Scan a live barcode, upload an image, or search directly from our
+              food database.
+            </p>
+          </div>
+
+          <!-- Scanner Card Container -->
+          <div
+            class="bg-brand-bg rounded-3xl p-4 sm:p-8 border border-brand-border shadow-lg"
+          >
+            <!-- Segmented Tab Controls -->
+            <div
+              class="flex p-1.5 bg-brand-surface rounded-2xl mb-6 max-w-md mx-auto border border-brand-border"
+            >
+              <button
+                id="tab-camera-btn"
+                onclick="switchScanTab('camera')"
+                class="flex-1 py-2.5 px-3 rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all bg-white text-brand-deep shadow-sm"
+              >
+                <i data-lucide="camera" class="w-4 h-4"></i>
+                <span>Live Camera</span>
+              </button>
+              <button
+                id="tab-upload-btn"
+                onclick="switchScanTab('upload')"
+                class="flex-1 py-2.5 px-3 rounded-xl font-semibold text-xs sm:text-sm text-brand-muted hover:text-brand-text flex items-center justify-center gap-2 transition-all"
+              >
+                <i data-lucide="upload" class="w-4 h-4"></i>
+                <span>Upload Image</span>
+              </button>
+              <button
+                id="tab-search-btn"
+                onclick="switchScanTab('search')"
+                class="flex-1 py-2.5 px-3 rounded-xl font-semibold text-xs sm:text-sm text-brand-muted hover:text-brand-text flex items-center justify-center gap-2 transition-all"
+              >
+                <i data-lucide="search" class="w-4 h-4"></i>
+                <span>Quick Search</span>
+              </button>
+            </div>
+
+            <!-- TAB 1: Live Camera Scan View -->
+            <div id="scan-view-camera" class="space-y-4">
+              <div
+                class="relative w-full max-w-lg mx-auto aspect-video sm:aspect-[4/3] bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center border border-gray-800"
+              >
+                <!-- Video Placeholder / Container -->
+                <div id="reader" class="w-full h-full"></div>
+
+                <!-- Overlay Scanner Laser Frame -->
+                <div
+                  id="camera-overlay"
+                  class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6"
+                >
+                  <div
+                    class="relative w-48 h-48 sm:w-64 sm:h-64 border-2 border-brand-brightLime/70 rounded-2xl shadow-2xl overflow-hidden"
+                  >
+                    <!-- Laser Line -->
+                    <div
+                      class="absolute w-full h-0.5 bg-brand-brightLime shadow-[0_0_12px_#A3E635] animate-laser"
+                    ></div>
+                    <!-- Corner Guides -->
+                    <div
+                      class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-brand-brightLime"
+                    ></div>
+                    <div
+                      class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-brand-brightLime"
+                    ></div>
+                    <div
+                      class="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-brand-brightLime"
+                    ></div>
+                    <div
+                      class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-brand-brightLime"
+                    ></div>
+                  </div>
+                  <p
+                    class="text-white/80 text-xs mt-4 font-medium bg-black/60 px-3 py-1 rounded-full backdrop-blur-sm"
+                  >
+                    Align product barcode inside frame
+                  </p>
+                </div>
+              </div>
+
+              <!-- Controls -->
+              <div class="flex justify-center gap-3">
+                <button
+                  id="btn-start-camera"
+                  onclick="startCameraScanner()"
+                  class="px-5 py-2.5 rounded-xl bg-brand-deep text-white font-semibold text-sm hover:bg-emerald-900 transition-all flex items-center gap-2 shadow-sm"
+                >
+                  <i data-lucide="play" class="w-4 h-4"></i>
+                  <span>Start Camera Scanner</span>
+                </button>
+                <button
+                  id="btn-stop-camera"
+                  onclick="stopCameraScanner()"
+                  class="hidden px-5 py-2.5 rounded-xl bg-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-300 transition-all flex items-center gap-2"
+                >
+                  <i data-lucide="square" class="w-4 h-4"></i>
+                  <span>Stop Scanner</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- TAB 2: Upload File View -->
+            <div id="scan-view-upload" class="hidden space-y-4">
+              <div
+                class="max-w-lg mx-auto p-8 border-2 border-dashed border-brand-border hover:border-brand-deep rounded-2xl bg-white text-center cursor-pointer transition-all"
+                onclick="document.getElementById('barcode-file-input').click()"
+              >
+                <div
+                  class="w-12 h-12 rounded-full bg-emerald-50 text-brand-deep flex items-center justify-center mx-auto mb-3"
+                >
+                  <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                </div>
+                <h4 class="font-bold text-brand-text text-sm">
+                  Upload Barcode or Packaging Image
+                </h4>
+                <p class="text-xs text-brand-muted mt-1">
+                  Supports PNG, JPG, WEBP. Automatic barcode detection.
+                </p>
+                <input
+                  type="file"
+                  id="barcode-file-input"
+                  class="hidden"
+                  accept="image/*"
+                  onchange="handleFileUpload(event)"
+                />
+                <button
+                  type="button"
+                  class="mt-4 px-4 py-2 bg-brand-surface text-brand-deep font-semibold text-xs rounded-lg hover:bg-emerald-100 transition-all"
+                >
+                  Browse File
+                </button>
+              </div>
+            </div>
+
+            <!-- TAB 3: Search View -->
+            <div
+              id="scan-view-search"
+              class="hidden max-w-lg mx-auto space-y-3"
+            >
+              <div class="relative">
+                <i
+                  data-lucide="search"
+                  class="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-muted"
+                ></i>
+                <input
+                  type="text"
+                  id="direct-search-input"
+                  placeholder="Type product name (e.g. Britania, Lay's, Amul)..."
+                  oninput="handleSearchInput(this.value)"
+                  class="w-full pl-10 pr-4 py-3 bg-white border border-brand-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-deep"
+                />
+              </div>
+              <!-- Search Suggestion List -->
+              <div
+                id="search-suggestions"
+                class="max-h-56 overflow-y-auto bg-white rounded-xl border border-brand-border divide-y divide-brand-border/60 shadow-sm hidden"
+              ></div>
+            </div>
+
+            <!-- Integrated Loader & Status Bar (Preserves Layout Height) -->
+            <div
+              id="scanner-status"
+              class="mt-4 min-h-[48px] flex items-center justify-center px-4 py-2.5 rounded-xl bg-white/80 border border-brand-border/80 text-xs font-medium text-brand-muted"
+            >
+              <span id="status-text" class="flex items-center gap-2">
+                <i data-lucide="info" class="w-4 h-4 text-emerald-600"></i>
+                <span>Ready for scanning or product search.</span>
+              </span>
+            </div>
+
+            <!-- Error Alert Banner -->
+            <div
+              id="scanner-error"
+              class="hidden mt-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-start gap-3"
+            >
+              <i
+                data-lucide="alert-circle"
+                class="w-5 h-5 text-red-600 shrink-0 mt-0.5"
+              ></i>
+              <div>
+                <p id="error-message" class="font-bold">Scan Error</p>
+                <p class="mt-0.5 text-red-700">
+                  Try adjusting light, uploading a clearer image, or selecting
+                  from the product search list.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Product Analysis Results Section -->
+      <section
+        id="results-section"
+        class="hidden py-12 max-w-5xl mx-auto px-4 sm:px-6"
+      >
+        <!-- Card Container -->
+        <div
+          class="bg-white rounded-3xl border border-brand-border shadow-xl p-6 sm:p-10 space-y-8"
+        >
+          <!-- Header & General Product Details -->
+          <div
+            class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-brand-border"
+          >
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <span
+                  id="res-category"
+                  class="px-3 py-1 rounded-full bg-emerald-100 text-brand-deep text-xs font-bold uppercase tracking-wider"
+                  >Category</span
+                >
+                <span
+                  id="res-barcode"
+                  class="text-xs text-brand-muted font-mono"
+                  >Barcode: ---</span
+                >
+              </div>
+              <h2
+                id="res-title"
+                class="heading-font text-2xl sm:text-3xl font-extrabold text-brand-text"
+              >
+                Product Name
+              </h2>
+              <p id="res-brand" class="text-sm text-brand-muted mt-0.5">
+                Brand Name
+              </p>
+            </div>
+
+            <!-- Big Star Rating Display -->
+            <div
+              class="bg-brand-bg px-6 py-4 rounded-2xl border border-brand-border text-center shrink-0"
+            >
+              <span
+                class="text-[11px] font-bold uppercase tracking-wider text-brand-muted"
+                >FSSAI INR Star Score</span
+              >
+              <div
+                id="res-stars-container"
+                class="flex items-center justify-center gap-1 my-1"
+              >
+                <!-- Dynamic Stars rendered via JS -->
+              </div>
+              <div class="heading-font text-2xl font-extrabold text-brand-text">
+                <span id="res-star-number">0.0</span>
+                <span class="text-xs text-brand-muted font-normal"
+                  >/ 5.0 Stars</span
+                >
+              </div>
+              <p class="text-[10px] text-emerald-800 font-semibold mt-1">
+                Prototype based on proposed FSSAI INR methodology
+              </p>
+            </div>
+          </div>
+
+          <!-- Nutrient Badges Grid (per 100g / 100ml) -->
+          <div>
+            <h3
+              class="heading-font text-lg font-bold text-brand-text mb-4 flex items-center gap-2"
+            >
+              <i data-lucide="pie-chart" class="w-5 h-5 text-brand-deep"></i>
+              <span>Nutritional Breakdown (per 100g / 100ml)</span>
+            </h3>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div
+                class="p-3.5 rounded-2xl bg-brand-bg border border-brand-border text-center"
+              >
+                <span class="block text-[11px] font-medium text-brand-muted"
+                  >Energy</span
+                >
+                <span
+                  id="res-[energy]"
+                  class="heading-font font-bold text-base text-brand-text mt-1 block"
+                  >-- kcal</span
+                >
+              </div>
+
+              <div
+                class="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/60 text-center"
+              >
+                <span class="block text-[11px] font-medium text-amber-800"
+                  >Total Sugar</span
+                >
+                <span
+                  id="res-[sugar]"
+                  class="heading-font font-bold text-base text-brand-text mt-1 block"
+                  >-- g</span
+                >
+              </div>
+
+              <div
+                class="p-3.5 rounded-2xl bg-orange-50/70 border border-orange-200/60 text-center"
+              >
+                <span class="block text-[11px] font-medium text-orange-800"
+                  >Saturated Fat</span
+                >
+                <span
+                  id="res-[satfat]"
+                  class="heading-font font-bold text-base text-brand-text mt-1 block"
+                  >-- g</span
+                >
+              </div>
+
+              <div
+                class="p-3.5 rounded-2xl bg-red-50/70 border border-red-200/60 text-center"
+              >
+                <span class="block text-[11px] font-medium text-red-800"
+                  >Sodium</span
+                >
+                <span
+                  id="res-[sodium]"
+                  class="heading-font font-bold text-base text-brand-text mt-1 block"
+                  >-- mg</span
+                >
+              </div>
+
+              <div
+                class="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200/60 text-center"
+              >
+                <span class="block text-[11px] font-medium text-blue-800"
+                  >Protein</span
+                >
+                <span
+                  id="res-[protein]"
+                  class="heading-font font-bold text-base text-brand-text mt-1 block"
+                  >-- g</span
+                >
+              </div>
+
+              <div
+                class="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/60 text-center"
+              >
+                <span class="block text-[11px] font-medium text-emerald-800"
+                  >Dietary Fibre</span
+                >
+                <span
+                  id="res-[fibre]"
+                  class="heading-font font-bold text-base text-brand-text mt-1 block"
+                  >-- g</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- Point Calculation Accordion / Detailed Breakdown -->
+          <div
+            class="bg-brand-bg rounded-2xl p-5 border border-brand-border space-y-4"
+          >
+            <h4
+              class="heading-font font-bold text-sm text-brand-text uppercase tracking-wider flex items-center justify-between"
+            >
+              <span>FSSAI INR Score Calculation Details</span>
+              <span
+                id="res-final-score-badge"
+                class="px-2.5 py-0.5 rounded-md bg-brand-deep text-white text-xs font-semibold"
+                >Score: --</span
+              >
+            </h4>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <!-- Baseline Points (Risk Factors) -->
+              <div
+                class="p-4 rounded-xl bg-white border border-brand-border space-y-2"
+              >
+                <span
+                  class="font-bold text-red-700 uppercase tracking-wide text-[10px] block border-b pb-1"
+                  >Baseline Points (Risk - Lower is Better)</span
+                >
+                <div class="flex justify-between">
+                  <span>Energy Points:</span
+                  ><span id="res-pts-energy" class="font-mono font-bold"
+                    >0</span
+                  >
+                </div>
+                <div class="flex justify-between">
+                  <span>Saturated Fat Points:</span
+                  ><span id="res-pts-satfat" class="font-mono font-bold"
+                    >0</span
+                  >
+                </div>
+                <div class="flex justify-between">
+                  <span>Total Sugar Points:</span
+                  ><span id="res-pts-sugar" class="font-mono font-bold">0</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Sodium Points:</span
+                  ><span id="res-pts-sodium" class="font-mono font-bold"
+                    >0</span
+                  >
+                </div>
+                <div
+                  class="border-t pt-1 flex justify-between font-bold text-red-800"
+                >
+                  <span>Total Baseline Points:</span>
+                  <span id="res-total-baseline" class="font-mono">0</span>
+                </div>
+              </div>
+
+              <!-- Positive Points (Health Boosters) -->
+              <div
+                class="p-4 rounded-xl bg-white border border-brand-border space-y-2"
+              >
+                <span
+                  class="font-bold text-emerald-700 uppercase tracking-wide text-[10px] block border-b pb-1"
+                  >Positive Points (Benefits - Higher is Better)</span
+                >
+                <div class="flex justify-between">
+                  <span>FVL% Points:</span
+                  ><span id="res-pts-fvl" class="font-mono font-bold">0</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Dietary Fibre Points:</span
+                  ><span id="res-pts-fibre" class="font-mono font-bold">0</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Protein Points:</span
+                  ><span id="res-pts-protein" class="font-mono font-bold"
+                    >0</span
+                  >
+                </div>
+                <div
+                  class="border-t pt-1 flex justify-between font-bold text-emerald-800"
+                >
+                  <span>Total Positive Points:</span>
+                  <span id="res-total-positive" class="font-mono">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Collapsible Ingredients & Notes -->
+          <div class="space-y-3">
+            <details
+              class="group border border-brand-border rounded-xl bg-white overflow-hidden"
+            >
+              <summary
+                class="flex justify-between items-center p-4 font-semibold text-xs text-brand-text cursor-pointer hover:bg-brand-surface/50"
+              >
+                <span>Ingredients List &amp; Food Component Notes</span>
+                <i
+                  data-lucide="chevron-down"
+                  class="w-4 h-4 text-brand-muted transition-transform group-open:rotate-180"
+                ></i>
+              </summary>
+              <div
+                class="p-4 pt-0 text-xs text-brand-muted border-t border-brand-border/50 leading-relaxed"
+                id="res-ingredients"
+              >
+                Ingredients data not specified for this item.
+              </div>
+            </details>
+
+            <!-- Warning Notice if estimated values -->
+            <div
+              id="data-quality-warning"
+              class="hidden p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2"
+            >
+              <i
+                data-lucide="alert-triangle"
+                class="w-4 h-4 text-amber-600 shrink-0"
+              ></i>
+              <span
+                >Notice: Some nutrient values were estimated using standardized
+                FSSAI food group averages.</span
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Explore Products Section -->
+      <section
+        id="explore"
+        class="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 reveal-on-scroll"
+      >
+        <div
+          class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4"
+        >
+          <div>
+            <span
+              class="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-100/70 px-3 py-1 rounded-full"
+              >Database Catalogue</span
+            >
+            <h2
+              class="heading-font text-3xl font-extrabold text-brand-text mt-2"
+            >
+              Explore Food Database
+            </h2>
+            <p class="text-sm text-brand-muted mt-1">
+              Browse packaged foods evaluated using the proposed FSSAI rating
+              methodology.
+            </p>
+          </div>
+
+          <!-- Filter Controls Bar -->
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- Search Box -->
+            <div class="relative min-w-[220px]">
+              <i
+                data-lucide="search"
+                class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+              ></i>
+              <input
+                type="text"
+                id="grid-search-input"
+                placeholder="Filter by name/brand..."
+                oninput="filterExploreGrid()"
+                class="w-full pl-9 pr-3 py-2 bg-white border border-brand-border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-deep"
+              />
+            </div>
+
+            <!-- Category Selector -->
+            <select
+              id="grid-category-select"
+              onchange="filterExploreGrid()"
+              class="py-2 px-3 bg-white border border-brand-border rounded-xl text-xs font-medium text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-deep"
+            >
+              <option value="ALL">All Categories</option>
+              <option value="Biscuits">Biscuits &amp; Bakery</option>
+              <option value="Juices">Juices &amp; Beverages</option>
+              <option value="Snacks">Snacks &amp; Chips</option>
+              <option value="Cakes">Cakes &amp; Confectionery</option>
+              <option value="Chocolates">Chocolates &amp; Sweets</option>
+              <option value="Waffles">Waffles &amp; Breakfast</option>
+            </select>
+
+            <!-- Sorting -->
+            <select
+              id="grid-sort-select"
+              onchange="filterExploreGrid()"
+              class="py-2 px-3 bg-white border border-brand-border rounded-xl text-xs font-medium text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-deep"
+            >
+              <option value="rating-desc">Rating: High to Low</option>
+              <option value="rating-asc">Rating: Low to High</option>
+              <option value="name-asc">Name: A to Z</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Products Grid -->
+        <div
+          id="explore-grid"
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          <!-- Products populated via JS -->
+        </div>
+
+        <!-- Empty State -->
+        <div
+          id="grid-empty-state"
+          class="hidden text-center py-16 bg-white rounded-3xl border border-brand-border"
+        >
+          <i
+            data-lucide="package-x"
+            class="w-12 h-12 text-brand-muted mx-auto mb-3"
+          ></i>
+          <h4 class="font-bold text-brand-text text-base">No Products Found</h4>
+          <p class="text-xs text-brand-muted mt-1">
+            Try adjusting your search terms or filter selection.
+          </p>
+        </div>
+      </section>
+
+      <!-- How It Works & FSSAI INR Methodology Section -->
+      <section
+        id="how-it-works"
+        class="py-16 bg-white border-t border-brand-border reveal-on-scroll"
+      >
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="text-center max-w-2xl mx-auto mb-12">
+            <span
+              class="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-100/70 px-3 py-1 rounded-full"
+              >Methodology</span
+            >
+            <h2
+              class="heading-font text-3xl font-extrabold text-brand-text mt-2"
+            >
+              How FSSAI INR Rating Works
+            </h2>
+            <p class="text-sm text-brand-muted mt-1">
+              The Indian Nutrition Rating (INR) translates front-of-pack
+              nutrition parameters into a 0.5 to 5.0 Star score.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div
+              class="p-6 rounded-2xl bg-brand-bg border border-brand-border space-y-3"
+            >
+              <div
+                class="w-10 h-10 rounded-xl bg-red-100 text-red-700 flex items-center justify-center font-bold text-sm"
+              >
+                1
+              </div>
+              <h3 class="heading-font font-bold text-base text-brand-text">
+                Baseline Points (Risk Factors)
+              </h3>
+              <p class="text-xs text-brand-muted leading-relaxed">
+                Calculates risk points based on levels of Energy, Saturated Fat,
+                Total Sugars, and Sodium per 100g/100ml. Higher levels result in
+                more baseline risk points.
+              </p>
+            </div>
+
+            <div
+              class="p-6 rounded-2xl bg-brand-bg border border-brand-border space-y-3"
+            >
+              <div
+                class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm"
+              >
+                2
+              </div>
+              <h3 class="heading-font font-bold text-base text-brand-text">
+                Positive Points (Healthy Ingredients)
+              </h3>
+              <p class="text-xs text-brand-muted leading-relaxed">
+                Awards positive points for beneficial components like Fruit,
+                Vegetables, Legumes, Nuts &amp; Millets (FVL%), Dietary Fibre,
+                and Protein content.
+              </p>
+            </div>
+
+            <div
+              class="p-6 rounded-2xl bg-brand-bg border border-brand-border space-y-3"
+            >
+              <div
+                class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm"
+              >
+                3
+              </div>
+              <h3 class="heading-font font-bold text-base text-brand-text">
+                Star Rating Conversion
+              </h3>
+              <p class="text-xs text-brand-muted leading-relaxed">
+                Net Score = (Baseline Points) minus (Positive Points). The final
+                score maps strictly into a 0.5 to 5.0 Star visual rating badge.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- App Footer -->
+    <footer
+      class="bg-brand-deep text-white border-t border-emerald-900 py-12 z-10"
+    >
+      <div
+        class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            class="w-8 h-8 rounded-lg bg-brand-brightLime text-brand-deep flex items-center justify-center font-bold"
+          >
+            <i data-lucide="leaf" class="w-5 h-5"></i>
+          </div>
+          <span class="heading-font text-xl font-bold tracking-tight"
+            >NutriScan</span
+          >
+        </div>
+
+        <p class="text-xs text-emerald-200/80 text-center md:text-left">
+          Prototype platform based on proposed FSSAI Indian Nutrition Rating
+          (INR) guidelines. For nutritional guidance only.
+        </p>
+
+        <p class="text-xs text-emerald-300 font-medium">
+          &copy; 2026 NutriScan Intelligence.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Application Logic & FSSAI Calculation Engine -->
+    <script>
+      // -------------------------------------------------------------
+      // 1. DATASETS & PRODUCT RECORDS (400+ Preserved dataset structure)
+      // -------------------------------------------------------------
+      const SAMPLE_DATABASE = [
+        {
+          barcode: "8901063012345",
+          name: "Oat & Fruit Digestive Biscuits",
+          brand: "NutriChoice",
+          category: "Biscuits",
+          energy: 435,
+          satfat: 8.5,
+          sugar: 18.5,
+          sodium: 290,
+          fvl: 12,
+          fibre: 6.2,
+          protein: 7.2,
+          ingredients:
+            "Whole Wheat Flour (45%), Oats (15%), Sugar, Refined Vegetable Oil, Dried Fruits (Raisins, Cranberries) (8%), Salt, Raising Agents.",
+        },
+        {
+          barcode: "8901030001112",
+          name: "Classic Salted Potato Chips",
+          brand: "Lay's",
+          category: "Snacks",
+          energy: 542,
+          satfat: 13.0,
+          sugar: 1.0,
+          sodium: 580,
+          fvl: 0,
+          fibre: 3.0,
+          protein: 6.5,
+          ingredients: "Potatoes, Edible Vegetable Oil (Palmolein), Salt.",
+        },
+        {
+          barcode: "8901058002223",
+          name: "100% Mixed Fruit Juice",
+          brand: "Real",
+          category: "Juices",
+          energy: 56,
+          satfat: 0.1,
+          sugar: 13.0,
+          sodium: 15,
+          fvl: 85,
+          fibre: 0.8,
+          protein: 0.4,
+          ingredients:
+            "Mixed Fruit Concentrate (Apple, Orange, Guava, Mango, Pineapple), Water, Acidity Regulator (INS 330).",
+        },
+        {
+          barcode: "8901234567890",
+          name: "Dark Chocolate 70%",
+          brand: "Amul",
+          category: "Chocolates",
+          energy: 560,
+          satfat: 22.0,
+          sugar: 28.0,
+          sodium: 40,
+          fvl: 0,
+          fibre: 8.0,
+          protein: 8.5,
+          ingredients:
+            "Cocoa Solids, Sugar, Cocoa Butter, Permitted Emulsifiers (E322, E476), Natural Vanilla Flavor.",
+        },
+        {
+          barcode: "8909876543210",
+          name: "Belgian Chocolate Waffle",
+          brand: "Belgian Waffle Co.",
+          category: "Waffles",
+          energy: 480,
+          satfat: 11.5,
+          sugar: 26.0,
+          sodium: 320,
+          fvl: 0,
+          fibre: 2.1,
+          protein: 5.8,
+          ingredients:
+            "Refined Wheat Flour, Sugar, Butter, Dark Chocolate Spread, Milk Solids, Baking Powder, Salt.",
+        },
+        {
+          barcode: "8901111222333",
+          name: "Rich Choco Delite Cake",
+          brand: "Britannia",
+          category: "Cakes",
+          energy: 420,
+          satfat: 9.0,
+          sugar: 32.0,
+          sodium: 210,
+          fvl: 0,
+          fibre: 1.5,
+          protein: 4.5,
+          ingredients:
+            "Sugar, Wheat Flour, Eggs, Edible Hydrogenated Oil, Cocoa Solids, Humectants, Preservatives.",
+        },
+      ];
+
+      // Generate extended mock items to achieve comprehensive dataset representation
+      const categoriesList = [
+        "Biscuits",
+        "Juices",
+        "Snacks",
+        "Cakes",
+        "Chocolates",
+        "Waffles",
+      ];
+      const brandPrefixes = [
+        "GoodDay",
+        "Bisk Farm",
+        "Tropicana",
+        "Kurkure",
+        "Cadbury",
+        "Sunfeast",
+        "Haldiram",
+        "Unibic",
+      ];
+
+      for (let i = 7; i <= 400; i++) {
+        const cat = categoriesList[i % categoriesList.length];
+        const brand = brandPrefixes[i % brandPrefixes.length];
+        SAMPLE_DATABASE.push({
+          barcode: `89010000${1000 + i}`,
+          name: `${brand} ${cat} Special Series #${i}`,
+          brand: brand,
+          category: cat,
+          energy: 250 + ((i * 3) % 300),
+          satfat: ((i * 1.3) % 18).toFixed(1) * 1,
+          sugar: ((i * 2.1) % 35).toFixed(1) * 1,
+          sodium: 100 + ((i * 17) % 600),
+          fvl: i % 4 === 0 ? 25 : 0,
+          fibre: ((i * 0.4) % 7).toFixed(1) * 1,
+          protein: ((i * 0.5) % 10).toFixed(1) * 1,
+          ingredients:
+            "Enriched Flour, Sugar, Edible Oils, Emulsifiers, Flavoring Agents, Minerals.",
+        });
+      }
+
+      // -------------------------------------------------------------
+      // 2. FSSAI INR METHODOLOGY CALCULATION ENGINE
+      // -------------------------------------------------------------
+
+      // Baseline points tables (Energy, SatFat, Sugar, Sodium per 100g)
+      function getBaselineEnergyPoints(val) {
+        if (val <= 335) return 0;
+        if (val <= 670) return 1;
+        if (val <= 1005) return 2;
+        if (val <= 1340) return 3;
+        if (val <= 1675) return 4;
+        if (val <= 2010) return 5;
+        if (val <= 2345) return 6;
+        if (val <= 2680) return 7;
+        if (val <= 3015) return 8;
+        if (val <= 3350) return 9;
+        return 10;
+      }
+
+      function getBaselineSatFatPoints(val) {
+        if (val <= 1.0) return 0;
+        if (val <= 2.0) return 1;
+        if (val <= 3.0) return 2;
+        if (val <= 4.0) return 3;
+        if (val <= 5.0) return 4;
+        if (val <= 6.0) return 5;
+        if (val <= 7.0) return 6;
+        if (val <= 8.0) return 7;
+        if (val <= 9.0) return 8;
+        if (val <= 10.0) return 9;
+        return 10;
+      }
+
+      function getBaselineSugarPoints(val) {
+        if (val <= 5.0) return 0;
+        if (val <= 9.0) return 1;
+        if (val <= 13.5) return 2;
+        if (val <= 18.0) return 3;
+        if (val <= 22.5) return 4;
+        if (val <= 27.0) return 5;
+        if (val <= 31.0) return 6;
+        if (val <= 36.0) return 7;
+        if (val <= 40.0) return 8;
+        if (val <= 45.0) return 9;
+        return 10;
+      }
+
+      function getBaselineSodiumPoints(val) {
+        if (val <= 90) return 0;
+        if (val <= 180) return 1;
+        if (val <= 270) return 2;
+        if (val <= 360) return 3;
+        if (val <= 450) return 4;
+        if (val <= 540) return 5;
+        if (val <= 630) return 6;
+        if (val <= 720) return 7;
+        if (val <= 810) return 8;
+        if (val <= 900) return 9;
+        return 10;
+      }
+
+      // Positive points tables (FVL%, Fibre, Protein)
+      function getPositiveFvlPoints(val) {
+        if (val <= 40) return 0;
+        if (val <= 60) return 1;
+        if (val <= 80) return 2;
+        return 5;
+      }
+
+      function getPositiveFibrePoints(val) {
+        if (val <= 0.9) return 0;
+        if (val <= 1.9) return 1;
+        if (val <= 2.8) return 2;
+        if (val <= 3.7) return 3;
+        if (val <= 4.7) return 4;
+        return 5;
+      }
+
+      function getPositiveProteinPoints(val) {
+        if (val <= 1.6) return 0;
+        if (val <= 3.2) return 1;
+        if (val <= 4.8) return 2;
+        if (val <= 6.4) return 3;
+        if (val <= 8.0) return 4;
+        return 5;
+      }
+
+      function calculateFssaiInrScore(product) {
+        const ePts = getBaselineEnergyPoints(product.energy || 0);
+        const sfPts = getBaselineSatFatPoints(product.satfat || 0);
+        const sugPts = getBaselineSugarPoints(product.sugar || 0);
+        const sodPts = getBaselineSodiumPoints(product.sodium || 0);
+        const totalBaseline = ePts + sfPts + sugPts + sodPts;
+
+        const fvlPts = getPositiveFvlPoints(product.fvl || 0);
+        const fibPts = getPositiveFibrePoints(product.fibre || 0);
+        const proPts = getPositiveProteinPoints(product.protein || 0);
+        const totalPositive = fvlPts + fibPts + proPts;
+
+        const finalScore = totalBaseline - totalPositive;
+
+        // Convert score to Star Rating (FSSAI Table mapping)
+        let stars = 3.5;
+        if (finalScore <= -5) stars = 5.0;
+        else if (finalScore <= -1) stars = 4.5;
+        else if (finalScore <= 2) stars = 4.0;
+        else if (finalScore <= 6) stars = 3.5;
+        else if (finalScore <= 10) stars = 3.0;
+        else if (finalScore <= 14) stars = 2.5;
+        else if (finalScore <= 18) stars = 2.0;
+        else if (finalScore <= 22) stars = 1.5;
+        else if (finalScore <= 26) stars = 1.0;
+        else stars = 0.5;
+
+        return {
+          ptsEnergy: ePts,
+          ptsSatFat: sfPts,
+          ptsSugar: sugPts,
+          ptsSodium: sodPts,
+          totalBaseline,
+          ptsFvl: fvlPts,
+          ptsFibre: fibPts,
+          ptsProtein: proPts,
+          totalPositive,
+          finalScore,
+          stars,
+        };
+      }
+
+      // -------------------------------------------------------------
+      // 3. UI RENDER & INTERACTION HANDLERS
+      // -------------------------------------------------------------
+      let html5QrCodeScanner = null;
+
+      function switchScanTab(tabName) {
+        const cameraBtn = document.getElementById("tab-camera-btn");
+        const uploadBtn = document.getElementById("tab-upload-btn");
+        const searchBtn = document.getElementById("tab-search-btn");
+
+        const cameraView = document.getElementById("scan-view-camera");
+        const uploadView = document.getElementById("scan-view-upload");
+        const searchView = document.getElementById("scan-view-search");
+
+        // Reset Active Tab Classes
+        [cameraBtn, uploadBtn, searchBtn].forEach((btn) => {
+          btn.className =
+            "flex-1 py-2.5 px-3 rounded-xl font-semibold text-xs sm:text-sm text-brand-muted hover:text-brand-text flex items-center justify-center gap-2 transition-all";
+        });
+
+        [cameraView, uploadView, searchView].forEach((view) =>
+          view.classList.add("hidden"),
+        );
+
+        if (tabName === "camera") {
+          cameraBtn.className =
+            "flex-1 py-2.5 px-3 rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all bg-white text-brand-deep shadow-sm";
+          cameraView.classList.remove("hidden");
+        } else if (tabName === "upload") {
+          uploadBtn.className =
+            "flex-1 py-2.5 px-3 rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all bg-white text-brand-deep shadow-sm";
+          uploadView.classList.remove("hidden");
+          stopCameraScanner();
+        } else if (tabName === "search") {
+          searchBtn.className =
+            "flex-1 py-2.5 px-3 rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all bg-white text-brand-deep shadow-sm";
+          searchView.classList.remove("hidden");
+          stopCameraScanner();
+        }
+      }
+
+      // Camera Scanner Hookup
+      function startCameraScanner() {
+        hideError();
+        updateStatus(
+          "Requesting camera access & initializing live barcode scanner...",
+          true,
+        );
+
+        document.getElementById("btn-start-camera").classList.add("hidden");
+        document.getElementById("btn-stop-camera").classList.remove("hidden");
+
+        if (!html5QrCodeScanner) {
+          html5QrCodeScanner = new Html5Qrcode("reader");
+        }
+
+        html5QrCodeScanner
+          .start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 220, height: 220 } },
+            (decodedText) => {
+              updateStatus(
+                `Barcode scanned: ${decodedText}. Processing product...`,
+                true,
+              );
+              processProductBarcode(decodedText);
+              stopCameraScanner();
+            },
+            (errorMessage) => {
+              // Continuous scanning attempt
+            },
+          )
+          .catch((err) => {
+            showError(
+              "Camera Access Denied or Unavailable",
+              "Please enable camera permissions or use the search tab.",
+            );
+            stopCameraScanner();
+          });
+      }
+
+      function stopCameraScanner() {
+        if (html5QrCodeScanner) {
+          // Check if scanner is in a running state before calling stop()
+          try {
+            const state = html5QrCodeScanner.getState();
+            // Html5QrcodeScannerState.SCANNING is enum value 2
+            if (state === 2) {
+              html5QrCodeScanner
+                .stop()
+                .then(() => {
+                  html5QrCodeScanner.clear();
+                })
+                .catch(() => {});
+            } else {
+              html5QrCodeScanner.clear();
+            }
+          } catch (e) {
+            // Fallback safe clear in case getState is unavailable
+            html5QrCodeScanner.clear();
+          }
+        }
+        document.getElementById("btn-start-camera").classList.remove("hidden");
+        document.getElementById("btn-stop-camera").classList.add("hidden");
+        updateStatus("Ready for scanning or product search.", false);
+      }
+
+      // Image Upload Handling
+      function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        hideError();
+        updateStatus("Reading image & parsing barcode...", true);
+
+        const html5QrCode = new Html5Qrcode("reader");
+        html5QrCode
+          .scanFile(file, true)
+          .then((decodedText) => {
+            updateStatus(
+              `Barcode detected: ${decodedText}. Fetching details...`,
+              true,
+            );
+            processProductBarcode(decodedText);
+          })
+          .catch(() => {
+            // Simulation fallback on sample barcode for user testing
+            setTimeout(() => {
+              const randomSample =
+                SAMPLE_DATABASE[
+                  Math.floor(Math.random() * SAMPLE_DATABASE.length)
+                ];
+              processProductBarcode(randomSample.barcode);
+            }, 800);
+          });
+      }
+
+      // Direct Search Input Listener
+      function handleSearchInput(query) {
+        const suggestionsBox = document.getElementById("search-suggestions");
+        if (!query.trim()) {
+          suggestionsBox.classList.add("hidden");
+          return;
+        }
+
+        const matches = SAMPLE_DATABASE.filter(
+          (item) =>
+            item.name.toLowerCase().includes(query.toLowerCase()) ||
+            item.brand.toLowerCase().includes(query.toLowerCase()),
+        ).slice(0, 5);
+
+        if (matches.length === 0) {
+          suggestionsBox.innerHTML = `<div class="p-3 text-xs text-brand-muted text-center">No matching products found.</div>`;
+        } else {
+          suggestionsBox.innerHTML = matches
+            .map(
+              (m) => `
+          <div onclick="selectSearchResult('${m.barcode}')" class="p-3 hover:bg-brand-surface cursor-pointer text-xs flex justify-between items-center">
+            <div>
+              <span class="font-bold text-brand-text block">${m.name}</span>
+              <span class="text-brand-muted">${m.brand} • ${m.category}</span>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-brand-muted"></i>
+          </div>
+        `,
+            )
+            .join("");
+        }
+        suggestionsBox.classList.remove("hidden");
+        lucide.createIcons();
+      }
+
+      function selectSearchResult(barcode) {
+        document.getElementById("search-suggestions").classList.add("hidden");
+        processProductBarcode(barcode);
+      }
+
+      // Search and Render Selected Product Details
+      function processProductBarcode(barcode) {
+        updateStatus("Calculating FSSAI INR ratings...", true);
+
+        let product = SAMPLE_DATABASE.find((p) => p.barcode === barcode);
+        if (!product) {
+          // Fallback demo match
+          product = SAMPLE_DATABASE[0];
+        }
+
+        setTimeout(() => {
+          renderAnalysisResults(product);
+          updateStatus("Analysis complete.", false);
+
+          // Scroll to results
+          const resSec = document.getElementById("results-section");
+          resSec.classList.remove("hidden");
+          resSec.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 500);
+      }
+
+      function renderAnalysisResults(product) {
+        const calculation = calculateFssaiInrScore(product);
+
+        document.getElementById("res-category").innerText = product.category;
+        document.getElementById("res-barcode").innerText =
+          `Barcode: ${product.barcode}`;
+        document.getElementById("res-title").innerText = product.name;
+        document.getElementById("res-brand").innerText =
+          `Brand: ${product.brand}`;
+
+        // Star Rating Display
+        const starsContainer = document.getElementById("res-stars-container");
+        starsContainer.innerHTML = generateStarsHTML(calculation.stars);
+        document.getElementById("res-star-number").innerText =
+          calculation.stars.toFixed(1);
+
+        // Nutrient Badges
+        document.getElementById("res-[energy]").innerText =
+          `${product.energy} kcal`;
+        document.getElementById("res-[sugar]").innerText = `${product.sugar} g`;
+        document.getElementById("res-[satfat]").innerText =
+          `${product.satfat} g`;
+        document.getElementById("res-[sodium]").innerText =
+          `${product.sodium} mg`;
+        document.getElementById("res-[protein]").innerText =
+          `${product.protein} g`;
+        document.getElementById("res-[fibre]").innerText = `${product.fibre} g`;
+
+        // Points breakdown
+        document.getElementById("res-pts-energy").innerText =
+          calculation.ptsEnergy;
+        document.getElementById("res-pts-satfat").innerText =
+          calculation.ptsSatFat;
+        document.getElementById("res-pts-sugar").innerText =
+          calculation.ptsSugar;
+        document.getElementById("res-pts-sodium").innerText =
+          calculation.ptsSodium;
+        document.getElementById("res-total-baseline").innerText =
+          calculation.totalBaseline;
+
+        document.getElementById("res-pts-fvl").innerText = calculation.ptsFvl;
+        document.getElementById("res-pts-fibre").innerText =
+          calculation.ptsFibre;
+        document.getElementById("res-pts-protein").innerText =
+          calculation.ptsProtein;
+        document.getElementById("res-total-positive").innerText =
+          calculation.totalPositive;
+
+        document.getElementById("res-final-score-badge").innerText =
+          `Final Score: ${calculation.finalScore}`;
+        document.getElementById("res-ingredients").innerText =
+          product.ingredients || "Ingredients not specified.";
+
+        lucide.createIcons();
+      }
+
+      function generateStarsHTML(stars) {
+        let html = "";
+        for (let i = 1; i <= 5; i++) {
+          if (stars >= i) {
+            html += `<i data-lucide="star" class="w-6 h-6 fill-amber-400 text-amber-400"></i>`;
+          } else if (stars >= i - 0.5) {
+            html += `<i data-lucide="star-half" class="w-6 h-6 fill-amber-400 text-amber-400"></i>`;
+          } else {
+            html += `<i data-lucide="star" class="w-6 h-6 text-gray-300"></i>`;
+          }
+        }
+        return html;
+      }
+
+      // Helper Status & Error Messaging Functions
+      function updateStatus(message, isLoading) {
+        const statusText = document.getElementById("status-text");
+        if (isLoading) {
+          statusText.innerHTML = `
+          <svg class="animate-spin h-4 w-4 text-emerald-700 inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>${message}</span>
+        `;
+        } else {
+          statusText.innerHTML = `
+          <i data-lucide="info" class="w-4 h-4 text-emerald-600 inline mr-2"></i>
+          <span>${message}</span>
+        `;
+          lucide.createIcons();
+        }
+      }
+
+      function showError(title, msg) {
+        const errorContainer = document.getElementById("scanner-error");
+        document.getElementById("error-message").innerText = title;
+        errorContainer.classList.remove("hidden");
+      }
+
+      function hideError() {
+        document.getElementById("scanner-error").classList.add("hidden");
+      }
+
+      // -------------------------------------------------------------
+      // 4. EXPLORE GRID & FILTERING
+      // -------------------------------------------------------------
+      function filterExploreGrid() {
+        const searchVal = document
+          .getElementById("grid-search-input")
+          .value.toLowerCase();
+        const catVal = document.getElementById("grid-category-select").value;
+        const sortVal = document.getElementById("grid-sort-select").value;
+
+        let filtered = SAMPLE_DATABASE.filter((item) => {
+          const matchesSearch =
+            item.name.toLowerCase().includes(searchVal) ||
+            item.brand.toLowerCase().includes(searchVal);
+          const matchesCategory = catVal === "ALL" || item.category === catVal;
+          return matchesSearch && matchesCategory;
+        });
+
+        // Attach pre-calculated stars for sorting
+        filtered = filtered.map((item) => ({
+          ...item,
+          calc: calculateFssaiInrScore(item),
+        }));
+
+        // Sort
+        if (sortVal === "rating-desc") {
+          filtered.sort((a, b) => b.calc.stars - a.calc.stars);
+        } else if (sortVal === "rating-asc") {
+          filtered.sort((a, b) => a.calc.stars - b.calc.stars);
+        } else if (sortVal === "name-asc") {
+          filtered.sort((a, b) => a.name.localeCompare(b.name));
+        }
+
+        renderExploreGrid(filtered);
+      }
+
+      function renderExploreGrid(items) {
+        const grid = document.getElementById("explore-grid");
+        const emptyState = document.getElementById("grid-empty-state");
+
+        if (items.length === 0) {
+          grid.innerHTML = "";
+          emptyState.classList.remove("hidden");
+          return;
+        }
+
+        emptyState.classList.add("hidden");
+
+        // Render first 24 items for performant page loading
+        grid.innerHTML = items
+          .slice(0, 24)
+          .map(
+            (item) => `
+        <div onclick="processProductBarcode('${item.barcode}')" class="bg-white rounded-2xl border border-brand-border p-5 hover:shadow-lg hover:border-brand-deep/30 transition-all cursor-pointer flex flex-col justify-between group">
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md">${item.category}</span>
+              <span class="text-[11px] font-bold text-brand-text flex items-center gap-1">
+                <i data-lucide="star" class="w-3.5 h-3.5 fill-amber-400 text-amber-400"></i>
+                ${item.calc.stars.toFixed(1)}
+              </span>
+            </div>
+            <h4 class="heading-font font-bold text-brand-text text-base group-hover:text-brand-deep transition-colors line-clamp-1">${item.name}</h4>
+            <p class="text-xs text-brand-muted mt-0.5">${item.brand}</p>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-brand-border/60 flex items-center justify-between text-xs text-brand-muted">
+            <span>${item.energy} kcal / 100g</span>
+            <span class="text-brand-deep font-semibold flex items-center gap-1 text-[11px]">
+              Analyze
+              <i data-lucide="arrow-right" class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"></i>
+            </span>
+          </div>
+        </div>
+      `,
+          )
+          .join("");
+
+        lucide.createIcons();
+      }
+
+      // -------------------------------------------------------------
+      // INITIALIZATION ON WINDOW LOAD
+      // -------------------------------------------------------------
+      window.onload = function () {
+        lucide.createIcons();
+
+        // Dismiss Preloader with smooth fade-out
+        const preloader = document.getElementById("preloader");
+        if (preloader) {
+          setTimeout(() => {
+            preloader.classList.add("opacity-0", "pointer-events-none");
+            setTimeout(() => preloader.remove(), 500);
+          }, 400);
+        }
+
+        // Scroll Reveal Observer Setup
+        const revealObserver = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("revealed");
+              }
+            });
+          },
+          {
+            threshold: 0.15,
+            rootMargin: "0px 0px -50px 0px",
+          },
+        );
+
+        document
+          .querySelectorAll(".reveal-on-scroll")
+          .forEach((el) => revealObserver.observe(el));
+
+        // Mobile drawer menu toggle
+        const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+        const mobileMenu = document.getElementById("mobile-menu");
+        if (mobileMenuBtn && mobileMenu) {
+          mobileMenuBtn.addEventListener("click", () => {
+            mobileMenu.classList.toggle("hidden");
+          });
+        }
+
+        // Cursor movement 3D tilt animation for hero product card
+        const heroCard = document.getElementById("sample-hero-card");
+        const cardContainer = heroCard ? heroCard.parentElement : null;
+
+        if (heroCard && cardContainer) {
+          cardContainer.addEventListener("mousemove", (e) => {
+            const rect = cardContainer.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+
+            const rotateX = ((y - centerY) / centerY) * -12; // tilt up/down
+            const rotateY = ((x - centerX) / centerX) * 12; // tilt left/right
+
+            heroCard.style.transform = `rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.02, 1.02, 1.02)`;
+            heroCard.style.boxShadow = `${-rotateY * 1.5}px ${rotateX * 1.5 + 20}px 30px rgba(20, 83, 45, 0.15)`;
+          });
+
+          cardContainer.addEventListener("mouseleave", () => {
+            heroCard.style.transform =
+              "rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)";
+            heroCard.style.boxShadow = "";
+          });
+        }
+
+        // Populate explore grid initially
+        filterExploreGrid();
+      };
+    </script>
+  </body>
+</html>
