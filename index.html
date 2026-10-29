@@ -21,6 +21,7 @@
   
   <!-- HTML5 QR Code Reader JS -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 
   <script>
     tailwind.config = {
@@ -434,7 +435,7 @@
             <i data-lucide="alert-circle" class="w-4 h-4 text-red-600 shrink-0 mt-0.5"></i>
             <div>
               <p id="error-message" class="font-bold">Scan Error</p>
-              <p class="mt-0.5 text-red-700 text-[11px]">Adjust camera angle/light or try Quick Search tab.</p>
+              <p id="error-detail" class="mt-0.5 text-red-700 text-[11px]">Adjust camera angle/light or try Quick Search tab.</p>
             </div>
           </div>
 
@@ -587,15 +588,7 @@
 
           <!-- Category & Sort Row on Mobile -->
           <div class="grid grid-cols-2 gap-2 w-full sm:w-auto">
-            <select id="grid-category-select" onchange="filterExploreGrid()" class="py-2 px-2.5 bg-white border border-brand-border rounded-xl text-xs font-medium text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-deep shadow-sm">
-              <option value="ALL">All Categories</option>
-              <option value="Biscuits">Biscuits</option>
-              <option value="Juices">Juices</option>
-              <option value="Snacks">Snacks</option>
-              <option value="Cakes">Cakes</option>
-              <option value="Chocolates">Chocolates</option>
-              <option value="Waffles">Waffles</option>
-            </select>
+            <select id="grid-category-select" onchange="filterExploreGrid()" class="py-2 px-2.5 bg-white border border-brand-border rounded-xl text-xs font-medium text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-deep shadow-sm"><option value="ALL">All Categories</option><option value="BISCUIT">Biscuit</option><option value="CAKE">Cake</option><option value="CHOCOLATE">Chocolate</option><option value="DAIRY">Dairy</option><option value="ICEREAMES">Ice Creams</option><option value="INSTANT FOOD">Instant Food</option><option value="JUICE">Juice</option><option value="SAUCE">Sauce</option><option value="SNACKS">Snacks</option><option value="SPREAD">Spread</option><option value="SWEETS">Sweets</option><option value="WAFER">Wafer</option><option value="WAFFLE">Waffle</option></select>
 
             <select id="grid-sort-select" onchange="filterExploreGrid()" class="py-2 px-2.5 bg-white border border-brand-border rounded-xl text-xs font-medium text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-deep shadow-sm">
               <option value="rating-desc">Rating: High-Low</option>
@@ -703,119 +696,37 @@
     </div>
   </footer>
 
+  <div id="file-reader" style="display:none"></div>
+
   <!-- Application Logic & FSSAI Calculation Engine -->
   <script>
     // -------------------------------------------------------------
     // 1. DATASETS & PRODUCT RECORDS (400+ items)
     // -------------------------------------------------------------
-    const SAMPLE_DATABASE = [
-      {
-        barcode: "8901063012345",
-        name: "Oat & Fruit Digestive Biscuits",
-        brand: "NutriChoice",
-        category: "Biscuits",
-        energy: 435,
-        satfat: 8.5,
-        sugar: 18.5,
-        sodium: 290,
-        fvl: 12,
-        fibre: 6.2,
-        protein: 7.2,
-        ingredients: "Whole Wheat Flour (45%), Oats (15%), Sugar, Refined Vegetable Oil, Dried Fruits (Raisins, Cranberries) (8%), Salt, Raising Agents."
-      },
-      {
-        barcode: "8901030001112",
-        name: "Classic Salted Potato Chips",
-        brand: "Lay's",
-        category: "Snacks",
-        energy: 542,
-        satfat: 13.0,
-        sugar: 1.0,
-        sodium: 580,
-        fvl: 0,
-        fibre: 3.0,
-        protein: 6.5,
-        ingredients: "Potatoes, Edible Vegetable Oil (Palmolein), Salt."
-      },
-      {
-        barcode: "8901058002223",
-        name: "100% Mixed Fruit Juice",
-        brand: "Real",
-        category: "Juices",
-        energy: 56,
-        satfat: 0.1,
-        sugar: 13.0,
-        sodium: 15,
-        fvl: 85,
-        fibre: 0.8,
-        protein: 0.4,
-        ingredients: "Mixed Fruit Concentrate (Apple, Orange, Guava, Mango, Pineapple), Water, Acidity Regulator (INS 330)."
-      },
-      {
-        barcode: "8901234567890",
-        name: "Dark Chocolate 70%",
-        brand: "Amul",
-        category: "Chocolates",
-        energy: 560,
-        satfat: 22.0,
-        sugar: 28.0,
-        sodium: 40,
-        fvl: 0,
-        fibre: 8.0,
-        protein: 8.5,
-        ingredients: "Cocoa Solids, Sugar, Cocoa Butter, Permitted Emulsifiers (E322, E476), Natural Vanilla Flavor."
-      },
-      {
-        barcode: "8909876543210",
-        name: "Belgian Chocolate Waffle",
-        brand: "Belgian Waffle Co.",
-        category: "Waffles",
-        energy: 480,
-        satfat: 11.5,
-        sugar: 26.0,
-        sodium: 320,
-        fvl: 0,
-        fibre: 2.1,
-        protein: 5.8,
-        ingredients: "Refined Wheat Flour, Sugar, Butter, Dark Chocolate Spread, Milk Solids, Baking Powder, Salt."
-      },
-      {
-        barcode: "8901111222333",
-        name: "Rich Choco Delite Cake",
-        brand: "Britannia",
-        category: "Cakes",
-        energy: 420,
-        satfat: 9.0,
-        sugar: 32.0,
-        sodium: 210,
-        fvl: 0,
-        fibre: 1.5,
-        protein: 4.5,
-        ingredients: "Sugar, Wheat Flour, Eggs, Edible Hydrogenated Oil, Cocoa Solids, Humectants, Preservatives."
-      }
-    ];
-
-    const categoriesList = ["Biscuits", "Juices", "Snacks", "Cakes", "Chocolates", "Waffles"];
-    const brandPrefixes = ["GoodDay", "Bisk Farm", "Tropicana", "Kurkure", "Cadbury", "Sunfeast", "Haldiram", "Unibic"];
-
-    for (let i = 7; i <= 400; i++) {
-      const cat = categoriesList[i % categoriesList.length];
-      const brand = brandPrefixes[i % brandPrefixes.length];
-      SAMPLE_DATABASE.push({
-        barcode: `89010000${1000 + i}`,
-        name: `${brand} ${cat} Series #${i}`,
-        brand: brand,
-        category: cat,
-        energy: 250 + (i * 3) % 300,
-        satfat: ((i * 1.3) % 18).toFixed(1) * 1,
-        sugar: ((i * 2.1) % 35).toFixed(1) * 1,
-        sodium: (100 + (i * 17) % 600),
-        fvl: (i % 4 === 0) ? 25 : 0,
-        fibre: ((i * 0.4) % 7).toFixed(1) * 1,
-        protein: ((i * 0.5) % 10).toFixed(1) * 1,
-        ingredients: "Enriched Flour, Sugar, Edible Oils, Emulsifiers, Flavoring Agents, Minerals."
+    // Real product data (from your CSV via build_data.py). Values are per 100 g.
+    // Product data is loaded from data.json (same folder as this file). Values are per 100 g.
+    let SAMPLE_DATABASE = [];
+    const DATA_READY = fetch('data.json')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(rows => {
+        SAMPLE_DATABASE = rows.map(d => ({
+          id: d.id, name: d.name, brand: d.brand, category: d.cat, energy: d.kcal, satfat: d.sat, sugar: d.sugar,
+          sodium: d.sodium, fvl: d.fvl, fibre: d.fiber, protein: d.prot, ingredients: d.ing, notes: d.notes || []
+        }));
+      })
+      .catch(err => {
+        console.error('data.json load failed', err);
+        setTimeout(() => showError('Could not load data.json',
+          'Keep data.json in the same folder as index.html and open the page through a local server (e.g. run "python -m http.server" in that folder, then visit http://localhost:8000). Opening the file directly blocks loading.'), 500);
       });
-    }
+
+    // Optional: your own barcode -> product id links. Add entries like "8901063012345": 1
+    const LOCAL_BARCODES = {};
+
+    const CAT_LABELS = { BISCUIT:'Biscuits', CHOCOLATE:'Chocolates', SNACKS:'Snacks', 'INSTANT FOOD':'Instant Food', JUICE:'Juices',
+      ICEREAMES:'Ice Creams', SWEETS:'Sweets', CAKE:'Cakes', SAUCE:'Sauces', SPREAD:'Spreads', DAIRY:'Dairy', WAFFLE:'Waffles', WAFER:'Wafers' };
+    const catLabel = c => CAT_LABELS[c] || c;
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
     // -------------------------------------------------------------
     // 2. FSSAI INR METHODOLOGY ENGINE
@@ -902,7 +813,7 @@
     }
 
     function calculateFssaiInrScore(product) {
-      const ePts = getBaselineEnergyPoints(product.energy || 0);
+      const ePts = getBaselineEnergyPoints((product.energy || 0) * 4.184);
       const sfPts = getBaselineSatFatPoints(product.satfat || 0);
       const sugPts = getBaselineSugarPoints(product.sugar || 0);
       const sodPts = getBaselineSodiumPoints(product.sodium || 0);
@@ -976,8 +887,19 @@
       }
     }
 
+    const BARCODE_FORMATS = () => [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.ITF];
+    let scanLocked = false;
+
+    function scanFeedback() {
+      try { if (navigator.vibrate) navigator.vibrate([80, 40, 80]); } catch (e) {}
+    }
+
     function startCameraScanner() {
       hideError();
+      scanLocked = false;
+      if (typeof Html5Qrcode === 'undefined') { showError('Scanner library not loaded', 'Check your internet connection and reload the page.'); return; }
       updateStatus("Requesting camera permissions...", true);
 
       document.getElementById('camera-off-state').classList.add('hidden');
@@ -985,123 +907,284 @@
       document.getElementById('camera-active-controls').classList.remove('hidden');
 
       if (!html5QrCodeScanner) {
-        html5QrCodeScanner = new Html5Qrcode("reader");
+        html5QrCodeScanner = new Html5Qrcode("reader", { formatsToSupport: BARCODE_FORMATS(), useBarCodeDetectorIfSupported: true, verbose: false });
       }
-
-      // Responsive scanning config tuned for mobile aspect ratios
       const isMobile = window.innerWidth < 640;
-      const qrBoxWidth = isMobile ? 220 : 250;
-      const qrBoxHeight = isMobile ? 180 : 200;
-
       html5QrCodeScanner.start(
         { facingMode: "environment" },
-        { fps: 15, qrbox: { width: qrBoxWidth, height: qrBoxHeight } },
+        { fps: 10, qrbox: { width: isMobile ? 260 : 300, height: isMobile ? 120 : 140 } },
         (decodedText) => {
+          if (scanLocked) return;
+          scanLocked = true;
+          scanFeedback();
           updateStatus(`Barcode detected: ${decodedText}`, true);
+          stopCameraScanner(true);
           processProductBarcode(decodedText);
-          stopCameraScanner();
         },
         () => {}
-      ).catch((err) => {
-        showError("Camera Access Failed", "Please enable camera permissions or use Upload/Search tab.");
+      ).then(() => updateStatus("Point the camera at the barcode...", true))
+       .catch((err) => {
+        showError("Camera access failed", "Allow camera permission (needs https or localhost), or use the Upload / Search tab.");
         stopCameraScanner();
       });
     }
 
-    function stopCameraScanner() {
+    function stopCameraScanner(keepStatus) {
       if (html5QrCodeScanner) {
         try {
           const state = html5QrCodeScanner.getState();
-          if (state === 2) {
+          if (state === 2 || state === 3) {
             html5QrCodeScanner.stop().then(() => html5QrCodeScanner.clear()).catch(() => {});
           } else {
             html5QrCodeScanner.clear();
           }
-        } catch (e) {
-          html5QrCodeScanner.clear();
-        }
+        } catch (e) {}
       }
       document.getElementById('camera-off-state').classList.remove('hidden');
       document.getElementById('camera-overlay').classList.add('hidden');
       document.getElementById('camera-active-controls').classList.add('hidden');
-      updateStatus("Ready for barcode scan or search.", false);
+      if (!keepStatus) updateStatus("Ready for barcode scan or search.", false);
     }
 
-    function handleFileUpload(event) {
+    async function fileToBitmap(file) {
+      try { return await createImageBitmap(file); } catch (e) {}
+      const url = URL.createObjectURL(file);
+      try {
+        return await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = url; });
+      } finally { setTimeout(() => URL.revokeObjectURL(url), 5000); }
+    }
+
+    function zxingDecode(bmp) {
+      if (typeof ZXing === 'undefined') return null;
+      const hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8, ZXing.BarcodeFormat.UPC_A,
+        ZXing.BarcodeFormat.UPC_E, ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39, ZXing.BarcodeFormat.ITF]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+      const reader = new ZXing.MultiFormatReader();
+      reader.setHints(hints);
+      const w0 = bmp.naturalWidth || bmp.width, h0 = bmp.naturalHeight || bmp.height;
+      for (const rot of [0, 90]) {
+        for (const target of [1000, 600, 1600, 400]) {
+          const sc = target / Math.max(w0, h0);
+          const w = Math.round(w0 * sc), h = Math.round(h0 * sc);
+          const c = document.createElement('canvas');
+          const swap = rot === 90;
+          c.width = swap ? h : w; c.height = swap ? w : h;
+          const ctx = c.getContext('2d', { willReadFrequently: true });
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+          if (swap) { ctx.translate(c.width, 0); ctx.rotate(Math.PI / 2); }
+          ctx.drawImage(bmp, 0, 0, w, h);
+          try {
+            const lum = new ZXing.HTMLCanvasElementLuminanceSource(c);
+            return reader.decode(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum))).getText();
+          } catch (e) {}
+        }
+      }
+      return null;
+    }
+
+    async function decodeImageFile(file) {
+      let bmp = null;
+      try { bmp = await fileToBitmap(file); } catch (e) {}
+      // 1) native BarcodeDetector (Chrome/Android)
+      if (bmp && 'BarcodeDetector' in window) {
+        try {
+          const det = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf'] });
+          const res = await det.detect(bmp);
+          if (res.length) return res[0].rawValue;
+        } catch (e) {}
+      }
+      // 2) ZXing on canvas at several sizes / rotations (works for AVIF/WebP/PNG/JPG the browser can open)
+      if (bmp) { const t = zxingDecode(bmp); if (t) return t; }
+      // 3) html5-qrcode fallback
+      const reader = new Html5Qrcode("file-reader", { formatsToSupport: BARCODE_FORMATS(), useBarCodeDetectorIfSupported: true, verbose: false });
+      try { return await reader.scanFile(file, false); }
+      finally { try { reader.clear(); } catch (e) {} }
+    }
+
+    async function handleFileUpload(event) {
       const file = event.target.files[0];
+      event.target.value = '';
       if (!file) return;
-
       hideError();
-      updateStatus("Processing uploaded photo...", true);
-
-      const html5QrCode = new Html5Qrcode("reader");
-      html5QrCode.scanFile(file, true)
-        .then((decodedText) => {
-          updateStatus(`Barcode detected: ${decodedText}`, true);
-          processProductBarcode(decodedText);
-        })
-        .catch(() => {
-          setTimeout(() => {
-            const randomSample = SAMPLE_DATABASE[Math.floor(Math.random() * SAMPLE_DATABASE.length)];
-            processProductBarcode(randomSample.barcode);
-          }, 600);
-        });
+      updateStatus("Reading barcode from photo...", true);
+      try {
+        const code = await decodeImageFile(file);
+        scanFeedback();
+        updateStatus(`Barcode detected: ${code}`, true);
+        processProductBarcode(code);
+      } catch (e) {
+        updateStatus("No barcode found in that photo.", false);
+        showError("Couldn't read a barcode from this photo", "Use a sharp, well-lit, close-up photo with the full barcode visible and flat - or type the product name in the Search tab.");
+      }
     }
 
     function handleSearchInput(query) {
-      const suggestionsBox = document.getElementById('search-suggestions');
-      if (!query.trim()) {
-        suggestionsBox.classList.add('hidden');
-        return;
+      const box = document.getElementById('search-suggestions');
+      const q = query.trim().toLowerCase();
+      if (!q) { box.classList.add('hidden'); return; }
+      let html = '';
+      if (/^\d{8,14}$/.test(q)) {
+        html += `<div onclick="selectSearchBarcode('${q}')" class="p-3 hover:bg-brand-surface cursor-pointer text-xs font-bold text-brand-deep">Look up barcode ${q}</div>`;
       }
-
-      const matches = SAMPLE_DATABASE.filter(item => 
-        item.name.toLowerCase().includes(query.toLowerCase()) || 
-        item.brand.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 5);
-
-      if (matches.length === 0) {
-        suggestionsBox.innerHTML = `<div class="p-3 text-xs text-brand-muted text-center">No matching products found.</div>`;
+      const words = q.split(/\s+/);
+      const matches = SAMPLE_DATABASE.filter(it => { const t = (it.name + ' ' + it.brand).toLowerCase(); return words.every(w => t.includes(w)); }).slice(0, 8);
+      if (!matches.length && !html) {
+        html = `<div class="p-3 text-xs text-brand-muted text-center">No matching products found.</div>`;
       } else {
-        suggestionsBox.innerHTML = matches.map(m => `
-          <div onclick="selectSearchResult('${m.barcode}')" class="p-3 hover:bg-brand-surface cursor-pointer text-xs flex justify-between items-center active:bg-emerald-50">
+        html += matches.map(m => `
+          <div onclick="selectSearchResult(${m.id})" class="p-3 hover:bg-brand-surface cursor-pointer text-xs flex justify-between items-center active:bg-emerald-50">
             <div>
-              <span class="font-bold text-brand-text block">${m.name}</span>
-              <span class="text-brand-muted text-[10px]">${m.brand} • ${m.category}</span>
+              <span class="font-bold text-brand-text block">${esc(m.name)}</span>
+              <span class="text-brand-muted text-[10px]">${esc(m.brand)} • ${esc(catLabel(m.category))}</span>
             </div>
             <i data-lucide="chevron-right" class="w-4 h-4 text-brand-muted shrink-0"></i>
-          </div>
-        `).join('');
+          </div>`).join('');
       }
-      suggestionsBox.classList.remove('hidden');
+      box.innerHTML = html;
+      box.classList.remove('hidden');
       lucide.createIcons();
     }
 
-    function selectSearchResult(barcode) {
+    function selectSearchResult(id) {
       document.getElementById('search-suggestions').classList.add('hidden');
-      processProductBarcode(barcode);
+      openProductById(id);
+    }
+    function selectSearchBarcode(code) {
+      document.getElementById('search-suggestions').classList.add('hidden');
+      processProductBarcode(code);
     }
 
-    function processProductBarcode(barcode) {
+    function openProductById(id) {
+      const p = SAMPLE_DATABASE.find(x => x.id === id);
+      if (p) showProduct(p, null);
+    }
+
+    function showProduct(product, barcode) {
+      hideError();
       updateStatus("Calculating FSSAI INR health rating...", true);
-
-      let product = SAMPLE_DATABASE.find(p => p.barcode === barcode) || SAMPLE_DATABASE[0];
-
       setTimeout(() => {
-        renderAnalysisResults(product);
+        renderAnalysisResults(Object.assign({}, product, { barcode: barcode || product.barcode || '' }));
         updateStatus("Analysis ready.", false);
-        
         const resSec = document.getElementById('results-section');
         resSec.classList.remove('hidden');
         resSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 400);
+      }, 250);
+    }
+
+    // ---- barcode -> product name (Open Food Facts) -> best match in data.json -> score ----
+    const STOP = new Set(['the','and','with','pack','of','for','in','a','g','gm','ml','kg','pouch','bottle','box','new','biscuits','biscuit']);
+    const toks = s => (String(s).toLowerCase().match(/[a-z0-9]+/g) || []).filter(w => w.length > 1 && !STOP.has(w) && !/^\d+(g|gm|ml|kg)?$/.test(w));
+
+    function rankMatches(offName, offBrand) {
+      const brandT = new Set(toks(offBrand));
+      const offT = new Set(toks(offName + ' ' + offBrand));
+      if (!offT.size) return [];
+      return SAMPLE_DATABASE.map(p => {
+        const pT = toks(p.name + ' ' + p.brand);
+        if (!pT.length) return { p, score: 0 };
+        const hit = pT.filter(t => offT.has(t)).length;
+        const brandHit = toks(p.brand).some(t => brandT.has(t) || offT.has(t));
+        const score = (hit / pT.length) * 0.5 + (hit / offT.size) * 0.3 + (brandHit ? 0.2 : 0);
+        return { p, score: hit ? score : 0 };
+      }).filter(x => x.score > 0.2).sort((x, y) => y.score - x.score).slice(0, 5);
+    }
+
+    function barcodeVariants(code) {
+      const v = new Set([code]);
+      const stripped = code.replace(/^0+/, '');
+      v.add(stripped);
+      if (stripped.length < 13) v.add(stripped.padStart(13, '0'));
+      if (code.length === 12) v.add('0' + code);
+      return [...v];
+    }
+
+    async function fetchOff(code) {
+      for (const c of barcodeVariants(code)) {
+        const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(c)}.json?fields=product_name,brands,categories,nutriments,ingredients_text`);
+        const j = await r.json();
+        if (j.status === 1 && j.product && (j.product.product_name || j.product.brands)) return j.product;
+      }
+      return null;
+    }
+
+    function offToProduct(o) {
+      const n = o.nutriments || {};
+      if (n['energy-kcal_100g'] == null && n['energy_100g'] == null && n['sugars_100g'] == null) return null;
+      const sodium = n['sodium_100g'] != null ? n['sodium_100g'] * 1000 : (n['salt_100g'] != null ? n['salt_100g'] * 400 : 0);
+      return {
+        name: o.product_name || 'Unnamed product', brand: (o.brands || 'Unknown brand').split(',')[0].trim(),
+        category: (o.categories || 'Open Food Facts').split(',')[0].trim(),
+        energy: Math.round(n['energy-kcal_100g'] != null ? n['energy-kcal_100g'] : (n['energy_100g'] || 0) / 4.184),
+        satfat: +(n['saturated-fat_100g'] || 0).toFixed(1), sugar: +(n['sugars_100g'] || 0).toFixed(1),
+        sodium: Math.round(sodium), protein: +(n['proteins_100g'] || 0).toFixed(1), fibre: +(n['fiber_100g'] || 0).toFixed(1),
+        fvl: 0, ingredients: (o.ingredients_text || 'Ingredients not specified.') + '  [Source: Open Food Facts]'
+      };
+    }
+
+    let pendingOff = null;
+    function hideMatchPicker() { const m = document.getElementById('match-picker'); if (m) m.classList.add('hidden'); }
+    function pickMatch(id, barcode) { hideMatchPicker(); const p = SAMPLE_DATABASE.find(x => x.id === id); if (p) showProduct(p, barcode); }
+    function useOffData(barcode) { hideMatchPicker(); if (pendingOff) showProduct(pendingOff, barcode); }
+
+    function showMatchPicker(offName, barcode, ranked, offProduct) {
+      let box = document.getElementById('match-picker');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'match-picker';
+        box.className = 'mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs space-y-2';
+        document.getElementById('scanner-error').after(box);
+      }
+      pendingOff = offProduct;
+      box.innerHTML = `<p class="font-bold text-amber-900">Barcode ${esc(barcode)} = "${esc(offName)}". Pick the matching product from your database:</p>` +
+        ranked.map(r => `<button onclick="pickMatch(${r.p.id}, '${esc(barcode)}')" class="block w-full text-left p-2 rounded-lg bg-white border border-amber-200 hover:bg-amber-100"><b>${esc(r.p.name)}</b> <span class="text-brand-muted">• ${esc(r.p.brand)}</span></button>`).join('') +
+        (offProduct ? `<button onclick="useOffData('${esc(barcode)}')" class="block w-full text-left p-2 rounded-lg bg-emerald-100 border border-emerald-300 font-bold text-brand-deep">None of these - score using Open Food Facts nutrition</button>` : '');
+      box.classList.remove('hidden');
+    }
+
+    async function processProductBarcode(barcode) {
+      await DATA_READY;
+      barcode = String(barcode).trim();
+      hideError(); hideMatchPicker();
+      updateStatus(`Looking up ${barcode}...`, true);
+
+      if (LOCAL_BARCODES[barcode] != null) {
+        const p = SAMPLE_DATABASE.find(x => x.id === LOCAL_BARCODES[barcode]);
+        if (p) { showProduct(p, barcode); return; }
+      }
+
+      let off;
+      try { off = await fetchOff(barcode); }
+      catch (e) {
+        updateStatus("Lookup failed.", false);
+        showError(`Couldn't look up ${barcode}`, "No internet or Open Food Facts is unreachable. Try the Search tab.");
+        return;
+      }
+      if (!off) {
+        updateStatus("Product not found.", false);
+        showError(`Barcode ${barcode} not found`, "Open Food Facts has no product for this barcode. Search by product name in the Search tab instead.");
+        return;
+      }
+
+      const offName = [off.brands, off.product_name].filter(Boolean).join(' ');
+      const ranked = rankMatches(off.product_name || '', off.brands || '');
+      const offProduct = offToProduct(off);
+
+      if (ranked.length && ranked[0].score >= 0.6) { showProduct(ranked[0].p, barcode); return; }
+      if (ranked.length || offProduct) {
+        updateStatus("Barcode read - confirm the product.", false);
+        if (ranked.length) { showMatchPicker(offName, barcode, ranked, offProduct); return; }
+        showProduct(offProduct, barcode); return;
+      }
+      updateStatus("Product found but no nutrition data.", false);
+      showError(`"${offName}" found, but no match`, "It isn't in your database and has no nutrition data online. Try the Search tab.");
     }
 
     function renderAnalysisResults(product) {
       const calculation = calculateFssaiInrScore(product);
 
-      document.getElementById('res-category').innerText = product.category;
-      document.getElementById('res-barcode').innerText = `Barcode: ${product.barcode}`;
+      document.getElementById('res-category').innerText = catLabel(product.category);
+      document.getElementById('res-barcode').innerText = (product.barcode ? `Barcode: ${product.barcode}` : 'Selected from database');
       document.getElementById('res-title').innerText = product.name;
       document.getElementById('res-brand').innerText = `Brand: ${product.brand}`;
 
@@ -1127,7 +1210,7 @@
       document.getElementById('res-total-positive').innerText = calculation.totalPositive;
 
       document.getElementById('res-final-score-badge').innerText = `Score: ${calculation.finalScore}`;
-      document.getElementById('res-ingredients').innerText = product.ingredients || "Ingredients not specified.";
+      document.getElementById('res-ingredients').innerText = ((product.notes && product.notes.length ? '[' + product.notes.join(' ') + '] ' : '') + (product.ingredients || "")) || "Ingredients not specified.";
 
       lucide.createIcons();
     }
@@ -1168,6 +1251,7 @@
     function showError(title, msg) {
       const errorContainer = document.getElementById('scanner-error');
       document.getElementById('error-message').innerText = title;
+      if (msg) document.getElementById('error-detail').innerText = msg;
       errorContainer.classList.remove('hidden');
     }
 
@@ -1184,7 +1268,7 @@
       const sortVal = document.getElementById('grid-sort-select').value;
 
       let filtered = SAMPLE_DATABASE.filter(item => {
-        const matchesSearch = item.name.toLowerCase().includes(searchVal) || item.brand.toLowerCase().includes(searchVal);
+        const matchesSearch = (item.name + " " + item.brand).toLowerCase().includes(searchVal);
         const matchesCategory = (catVal === 'ALL') || (item.category === catVal);
         return matchesSearch && matchesCategory;
       });
@@ -1217,22 +1301,22 @@
 
       emptyState.classList.add('hidden');
       
-      grid.innerHTML = items.slice(0, 20).map(item => `
-        <div onclick="processProductBarcode('${item.barcode}')" class="bg-white rounded-xl sm:rounded-2xl border border-brand-border p-3.5 sm:p-5 hover:shadow-md transition-all active:bg-brand-surface/50 cursor-pointer flex flex-col justify-between group">
+      grid.innerHTML = items.slice(0, 24).map(item => `
+        <div onclick="openProductById(${item.id})" class="bg-white rounded-xl sm:rounded-2xl border border-brand-border p-3.5 sm:p-5 hover:shadow-md transition-all active:bg-brand-surface/50 cursor-pointer flex flex-col justify-between group">
           <div>
             <div class="flex items-center justify-between gap-2 mb-1.5">
-              <span class="text-[9px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">${item.category}</span>
+              <span class="text-[9px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">${esc(catLabel(item.category))}</span>
               <span class="text-[10px] font-bold text-brand-text flex items-center gap-0.5">
                 <i data-lucide="star" class="w-3 h-3 fill-amber-400 text-amber-400"></i>
                 ${item.calc.stars.toFixed(1)}
               </span>
             </div>
-            <h4 class="heading-font font-bold text-brand-text text-xs sm:text-sm group-hover:text-brand-deep transition-colors line-clamp-1">${item.name}</h4>
-            <p class="text-[10px] sm:text-xs text-brand-muted mt-0.5">${item.brand}</p>
+            <h4 class="heading-font font-bold text-brand-text text-xs sm:text-sm group-hover:text-brand-deep transition-colors line-clamp-1">${esc(item.name)}</h4>
+            <p class="text-[10px] sm:text-xs text-brand-muted mt-0.5">${esc(item.brand)}</p>
           </div>
 
           <div class="mt-3 pt-2.5 border-t border-brand-border/60 flex items-center justify-between text-[10px] sm:text-xs text-brand-muted">
-            <span>${item.energy} kcal / 100g</span>
+            <span>${Math.round(item.energy)} kcal / 100g</span>
             <span class="text-brand-deep font-semibold flex items-center gap-1 text-[10px]">
               Decode
               <i data-lucide="arrow-right" class="w-3 h-3"></i>
@@ -1292,7 +1376,7 @@
         }
       }
 
-      filterExploreGrid();
+      DATA_READY.then(filterExploreGrid);
     };
   </script>
 </body>
